@@ -1,0 +1,6 @@
+.env
+__pycache__
+.vscode
+.venv
+pubtator3/mutation2pubtator3
+pubtator3/rs.txt*

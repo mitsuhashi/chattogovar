@@ -1,0 +1,72 @@
+{
+  "counts": {
+    "n_primary_records": 150,
+    "n_secondary_records": 150,
+    "n_skipped_primary_no_key": 0,
+    "n_skipped_secondary_no_key": 0,
+    "n_paired_questions": 150,
+    "n_questions_changed_any_method": 2,
+    "n_paired_cells_total": 450,
+    "n_cells_changed": 2,
+    "n_missing_in_secondary": 0,
+    "n_missing_in_primary": 0
+  },
+  "agreement_total_score": {
+    "pooled": {
+      "n": 450,
+      "icc2_1": 0.9884827340928559,
+      "kappa_quadratic": 0.9884573792454736,
+      "mean_abs_delta": 0.09333333333333334,
+      "median_abs_delta": 0.0,
+      "max_abs_delta": 37
+    },
+    "by_method": {
+      "ChatTogoVar": {
+        "n": 150,
+        "icc2_1": 1.0,
+        "kappa_quadratic": 1.0,
+        "mean_abs_delta": 0.0,
+        "median_abs_delta": 0.0,
+        "max_abs_delta": 0
+      },
+      "GPT-4o": {
+        "n": 150,
+        "icc2_1": 1.0,
+        "kappa_quadratic": 1.0,
+        "mean_abs_delta": 0.0,
+        "median_abs_delta": 0.0,
+        "max_abs_delta": 0
+      },
+      "VarChat": {
+        "n": 150,
+        "icc2_1": 0.935509811726381,
+        "kappa_quadratic": 0.93510507949395,
+        "mean_abs_delta": 0.28,
+        "median_abs_delta": 0.0,
+        "max_abs_delta": 37
+      }
+    }
+  },
+  "examples_changed_questions": [
+    {
+      "key": "ID:34",
+      "QuestionNumber": "q18",
+      "rsID": "rs571414497",
+      "deltas": {
+        "VarChat": 37
+      }
+    },
+    {
+      "key": "ID:49",
+      "QuestionNumber": "q25",
+      "rsID": "rs876660744",
+      "deltas": {
+        "VarChat": 5
+      }
+    }
+  ],
+  "missing_keys": {
+    "missing_in_secondary": [],
+    "missing_in_primary": []
+  }
+}

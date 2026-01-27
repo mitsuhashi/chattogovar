@@ -1,0 +1,682 @@
+app:
+  description: Public ChatTogoVar at https://chattogovar.dbcls.jp
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: advanced-chat
+  name: ChatTogoVar
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/openai_api_compatible:0.0.22@88c295aff1ea52ea6ab56e3869ee37702d91f7b678c547254cf2b48271c8e81f
+    version: null
+kind: app
+version: 0.5.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 50
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: code
+      id: 1742454041057-source-1742454133751-target
+      source: '1742454041057'
+      sourceHandle: source
+      target: '1742454133751'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: variable-aggregator
+        targetType: answer
+      id: 1742454938143-source-answer-target
+      source: '1742454938143'
+      sourceHandle: source
+      target: answer
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: if-else
+      id: 1742454133751-source-1761015245612-target
+      source: '1742454133751'
+      sourceHandle: source
+      target: '1761015245612'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: if-else
+        targetType: if-else
+      id: 1761015245612-true-1762001000003-target
+      source: '1761015245612'
+      sourceHandle: 'true'
+      target: '1762001000003'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: if-else
+        targetType: llm
+      id: 1761015245612-false-17610158020340-target
+      source: '1761015245612'
+      sourceHandle: 'false'
+      target: '17610158020340'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: llm
+      id: 1742454548117-source-1761015995796-target
+      source: '1742454548117'
+      sourceHandle: source
+      target: '1761015995796'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: variable-aggregator
+      id: 1761015995796-source-1742454938143-target
+      source: '1761015995796'
+      sourceHandle: source
+      target: '1742454938143'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: llm
+        targetType: variable-aggregator
+      id: 17610158020340-source-1742454938143-target
+      source: '17610158020340'
+      sourceHandle: source
+      target: '1742454938143'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: if-else
+        targetType: http-request
+      id: 1762001000003-true-1762001000001-target
+      source: '1762001000003'
+      sourceHandle: 'true'
+      target: '1762001000001'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: 1762001000003-false-1762001000002-target
+      source: '1762001000003'
+      sourceHandle: 'false'
+      target: '1762001000002'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: code
+      id: 1762001000001-source-1762001000002-target
+      source: '1762001000001'
+      sourceHandle: source
+      target: '1762001000002'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: http-request
+      id: 1762001000002-source-1742454548117-target
+      source: '1762001000002'
+      sourceHandle: source
+      target: '1742454548117'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables: []
+      height: 71
+      id: '1742454041057'
+      position:
+        x: -421.5812330632485
+        y: 253.29017280473442
+      positionAbsolute:
+        x: -421.5812330632485
+        y: 253.29017280473442
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        answer: '{{#1742454938143.output#}}'
+        desc: ''
+        selected: false
+        title: Answer
+        type: answer
+        variables: []
+      height: 101
+      id: answer
+      position:
+        x: 2480.006128936508
+        y: 274.2901728047344
+      positionAbsolute:
+        x: 2480.006128936508
+        y: 274.2901728047344
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        code: "import re\nimport json\n\n# Extract rsID and HGVS-like strings from\
+          \ the user's question.\n# - rsID: rs\\d+\n# - HGVS: <accession_or_transcript>:<g|c|n|p>.<...>\n\
+          HGVS_RE = re.compile(\n    r\"\\b(\"\n    r\"(?:NC_\\d+\\.\\d+|NM_\\d+\\\
+          .\\d+|NR_\\d+\\.\\d+|ENST\\d+\\.\\d+|LRG_\\d+(?:t\\d+|p\\d+)?|[A-Za-z0-9_.-]+)\"\
+          \n    r\":\"\n    r\"(?:g|c|n|p)\\.[^\\s,;]+\"\n    r\")\\b\"\n)\n\ndef\
+          \ main(query: str) -> dict:\n    rs = sorted(set(m.lower() for m in re.findall(r\"\
+          \\brs\\d+\\b\", query, flags=re.IGNORECASE)))\n    hgvs = sorted(set(m.group(1)\
+          \ for m in HGVS_RE.finditer(query)))\n\n    return {\n        \"rs_numbers\"\
+          : json.dumps(rs, ensure_ascii=False),\n        \"hgvs_list\": json.dumps(hgvs,\
+          \ ensure_ascii=False),\n        \"has_rs\": bool(rs),\n        \"has_hgvs\"\
+          : bool(hgvs),\n        \"no_match\": not (rs or hgvs)\n    }\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          has_hgvs:
+            children: null
+            type: boolean
+          has_rs:
+            children: null
+            type: boolean
+          hgvs_list:
+            children: null
+            type: string
+          no_match:
+            children: null
+            type: boolean
+          rs_numbers:
+            children: null
+            type: string
+        selected: false
+        title: Code
+        type: code
+        variables:
+        - value_selector:
+          - sys
+          - query
+          variable: query
+      height: 50
+      id: '1742454133751'
+      position:
+        x: 71.20295385233044
+        y: 281.41935443881266
+      positionAbsolute:
+        x: 71.20295385233044
+        y: 281.41935443881266
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data:
+          - id: key-value-35
+            key: ''
+            type: text
+            value: '{{#1762001000002.togovar_query#}}'
+          type: json
+        desc: ''
+        headers: 'Content-TYpe:application/json
+
+          Accept:application/json'
+        method: post
+        params: ''
+        retry_config:
+          max_retries: 3
+          retry_enabled: true
+          retry_interval: 100
+        selected: false
+        ssl_verify: true
+        timeout:
+          max_connect_timeout: 0
+          max_read_timeout: 0
+          max_write_timeout: 0
+        title: HTTP Request
+        type: http-request
+        url: https://grch38.togovar.org/api/search/variant
+        variables: []
+      height: 136
+      id: '1742454548117'
+      position:
+        x: 1711.8537263636576
+        y: -85.96359263850773
+      positionAbsolute:
+        x: 1711.8537263636576
+        y: -85.96359263850773
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        desc: ''
+        output_type: string
+        selected: false
+        title: Variable Aggregator
+        type: variable-aggregator
+        variables:
+        - - '1761015995796'
+          - text
+        - - '17610158020340'
+          - text
+      height: 133
+      id: '1742454938143'
+      position:
+        x: 2135.4561378046033
+        y: 326.4823815391502
+      positionAbsolute:
+        x: 2135.4561378046033
+        y: 326.4823815391502
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: is
+            id: 9fef7f08-68b3-4a35-8d84-1a8f05ea87fa
+            value: false
+            varType: boolean
+            variable_selector:
+            - '1742454133751'
+            - no_match
+          id: 'true'
+          logical_operator: and
+        selected: false
+        title: IF/ELSE
+        type: if-else
+      height: 122
+      id: '1761015245612'
+      position:
+        x: 494.5547526371621
+        y: 671.744121917108
+      positionAbsolute:
+        x: 494.5547526371621
+        y: 671.744121917108
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        memory:
+          query_prompt_template: '{{#sys.query#}}
+
+            {{#sys.files#}}'
+          role_prefix:
+            assistant: ''
+            user: ''
+          window:
+            enabled: true
+            size: 50
+        model:
+          completion_params:
+            max_tokens: 4096
+            temperature: 0
+            top_p: 1
+          mode: chat
+          name: unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF
+          provider: langgenius/openai_api_compatible/openai_api_compatible
+        prompt_template:
+        - id: 3a5ab463-5857-4ce4-818c-2fb9374085cb
+          role: system
+          text: "### Expert Assistant Role\nYou are an expert assistant specializing\
+            \ in human genome variant analysis. When answering, generate your response\
+            \ based on both the information retrieved from the TogoVar API and your\
+            \ own knowledge . However, if the retrieved results are insufficient or\
+            \ do not fully address the question, use your own knowledge and reasoning\
+            \ to provide a comprehensive answer. Clearly indicate when your response\
+            \ is based on external knowledge rather than TogoVar API data.\n\n###\
+            \ Items included in your answer\n\n“Provide information on the following\
+            \ items (1–6) if they are directly relevant to the question. If no information\
+            \ is available, explicitly state that there is no data. Also, include\
+            \ a source URL for each answer when applicable.”\n1. Variant Identification:\
+            \ Provide rs number, HGVS notation, gene name, and transcript name with\
+            \ links where possible.\n2. Disease Associations: Summarize relationships\
+            \ with diseases based on curated databases (ClinVar) and predictive models\
+            \ (AlphaMissense, SIFT, PolyPhen).\n3. Literature Evidence: Include relevant\
+            \ publications where this variant has been mentioned.\n4. Allele Frequency\
+            \ Comparison: Compare allele frequencies between Japanese and non-Japanese\
+            \ populations, explaining population-specific differences if possible.\n\
+            5. GWAS Findings: Mention relevant phenotypes associated with this variant\
+            \ based on genome-wide association studies (GWAS).\n6. TogoVar Link: Provide\
+            \ a direct link to the TogoVar page for this variant. The URL of TogoVar\
+            \ is https://togovar.org.\n\n### Information retrieved from the TogoVar\
+            \ API \nNo Information\n"
+        selected: false
+        title: LLM_no_match
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 86
+      id: '17610158020340'
+      position:
+        x: 1617.6780452574294
+        y: 757.6419114693754
+      positionAbsolute:
+        x: 1617.6780452574294
+        y: 757.6419114693754
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        memory:
+          query_prompt_template: '{{#sys.query#}}
+
+
+            {{#sys.files#}}'
+          role_prefix:
+            assistant: ''
+            user: ''
+          window:
+            enabled: false
+            size: 50
+        model:
+          completion_params:
+            temperature: 0
+          mode: chat
+          name: unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF
+          provider: langgenius/openai_api_compatible/openai_api_compatible
+        prompt_template:
+        - id: 29ff7925-3349-4637-a2eb-9a3638ac0b7d
+          role: system
+          text: "### Expert Assistant Role\nYou are an expert assistant specializing\
+            \ in human genome variant analysis. When answering, generate your response\
+            \ based on both the information retrieved from the TogoVar API and your\
+            \ own knowledge . However, if the retrieved results are insufficient or\
+            \ do not fully address the question, use your own knowledge and reasoning\
+            \ to provide a comprehensive answer. Clearly indicate when your response\
+            \ is based on external knowledge rather than TogoVar API data.\n\n###\
+            \ Items included in your answer\n\n“Provide information on the following\
+            \ items (1–6) if they are directly relevant to the question. If no information\
+            \ is available, explicitly state that there is no data. Also, include\
+            \ a source URL for each answer when applicable.”\n1. Variant Identification:\
+            \ Provide rs number, HGVS notation, gene name, and transcript name with\
+            \ links where possible.\n2. Disease Associations: Summarize relationships\
+            \ with diseases based on curated databases (ClinVar) and predictive models\
+            \ (AlphaMissense, SIFT, PolyPhen).\n3. Literature Evidence: Include relevant\
+            \ publications where this variant has been mentioned.\n4. Allele Frequency\
+            \ Comparison: Compare allele frequencies between Japanese and non-Japanese\
+            \ populations, explaining population-specific differences if possible.\n\
+            5. GWAS Findings: Mention relevant phenotypes associated with this variant\
+            \ based on genome-wide association studies (GWAS).\n6. TogoVar Link: Provide\
+            \ a direct link to the TogoVar page for this variant. The URL of TogoVar\
+            \ is https://togovar.org.\n\n### Information retrieved from the TogoVar\
+            \ API \n{{#1742454548117.body#}}"
+        selected: false
+        title: LLM_rs_found
+        type: llm
+        vision:
+          enabled: false
+      height: 86
+      id: '1761015995796'
+      position:
+        x: 2091.472339412472
+        y: -92.77199570365121
+      positionAbsolute:
+        x: 2091.472339412472
+        y: -92.77199570365121
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: is
+            id: cond-hgvs-1
+            value: true
+            varType: boolean
+            variable_selector:
+            - '1742454133751'
+            - has_hgvs
+          id: 'true'
+          logical_operator: and
+        selected: false
+        title: IF/ELSE_has_hgvs
+        type: if-else
+      height: 122
+      id: '1762001000003'
+      position:
+        x: 713.5366725493409
+        y: -17.74032615401056
+      positionAbsolute:
+        x: 713.5366725493409
+        y: -17.74032615401056
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data:
+          - id: key-value-ensembl-1
+            key: ''
+            type: text
+            value: "{\n  \"ids\": {{#1742454133751.hgvs_list#}}\n}"
+          type: json
+        desc: ''
+        headers: 'Content-Type:application/json
+
+          Accept:application/json'
+        method: post
+        params: ''
+        retry_config:
+          max_retries: 3
+          retry_enabled: true
+          retry_interval: 100
+        selected: false
+        ssl_verify: true
+        timeout:
+          max_connect_timeout: 0
+          max_read_timeout: 0
+          max_write_timeout: 0
+        title: HTTP Request_Ensembl_VariantRecoder
+        type: http-request
+        url: https://rest.ensembl.org/variant_recoder/homo_sapiens
+        variables: []
+      height: 136
+      id: '1762001000001'
+      position:
+        x: 1092.1826392279586
+        y: -295.24779434554483
+      positionAbsolute:
+        x: 1092.1826392279586
+        y: -295.24779434554483
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        code: "import json\nimport re\n\ndef _nc_to_chr(acc: str):\n    # NC_000001.11\
+          \ -> 1, NC_000023.11 -> X, NC_000024.10 -> Y, NC_012920.1 -> MT\n    if\
+          \ acc.startswith(\"NC_000023\"):\n        return \"X\"\n    if acc.startswith(\"\
+          NC_000024\"):\n        return \"Y\"\n    if acc.startswith(\"NC_012920\"\
+          ):\n        return \"MT\"\n    m = re.match(r\"NC_0+(\\d+)\\.\", acc)\n\
+          \    if not m:\n        return None\n    try:\n        return str(int(m.group(1)))\n\
+          \    except Exception:\n        return None\n\ndef _extract_locations_from_ensembl(ensembl_body:\
+          \ str):\n    if not ensembl_body:\n        return []\n    try:\n       \
+          \ decoded = json.loads(ensembl_body)\n    except Exception:\n        return\
+          \ []\n\n    locs = []\n    # Example response: list of dicts, allele-key\
+          \ -> object, containing \"spdi\" list fileciteturn0file0L1-L1\n    #\
+          \ We'll just collect positions from SPDI where possible.\n    if isinstance(decoded,\
+          \ list):\n        items = decoded\n    else:\n        items = [decoded]\n\
+          \n    for item in items:\n        if not isinstance(item, dict):\n     \
+          \       continue\n        for _, allele_obj in item.items():\n         \
+          \   if not isinstance(allele_obj, dict):\n                continue\n   \
+          \         spdis = allele_obj.get(\"spdi\") or []\n            if not spdis:\n\
+          \                continue\n            spdi = spdis[0]  # \"NC_000009.12:133256041:C:T\"\
+          \n            parts = spdi.split(\":\")\n            if len(parts) < 2:\n\
+          \                continue\n            acc = parts[0]\n            try:\n\
+          \                pos0 = int(parts[1])\n            except Exception:\n \
+          \               continue\n            chrom = _nc_to_chr(acc)\n        \
+          \    if chrom is None:\n                continue\n            pos1 = pos0\
+          \ + 1  # SPDI uses 0-based position\n            locs.append({\"chromosome\"\
+          : chrom, \"position\": pos1})\n\n    # de-dup\n    uniq = {(d[\"chromosome\"\
+          ], d[\"position\"]) for d in locs}\n    return [{\"chromosome\": c, \"position\"\
+          : p} for (c, p) in sorted(uniq)]\n\ndef main(rs_numbers: str, hgvs_list:\
+          \ str, ensembl_body: str) -> dict:\n    try:\n        rs = json.loads(rs_numbers)\
+          \ if rs_numbers else []\n    except Exception:\n        rs = []\n    try:\n\
+          \        hgvs = json.loads(hgvs_list) if hgvs_list else []\n    except Exception:\n\
+          \        hgvs = []\n\n    locations = _extract_locations_from_ensembl(ensembl_body)\
+          \ if hgvs else []\n\n    clauses = []\n    if rs:\n        clauses.append({\"\
+          id\": rs})\n    for loc in locations:\n        clauses.append({\"location\"\
+          : loc})\n\n    if not clauses:\n        # fallback: return an empty query;\
+          \ caller should handle no_match upstream\n        q = {\"id\": []}\n   \
+          \ elif len(clauses) == 1:\n        q = clauses[0]\n    else:\n        q\
+          \ = {\"or\": clauses}\n\n    query_json = {\"query\": q}\n\n    return {\n\
+          \        \"togovar_query\": json.dumps(query_json, ensure_ascii=False),\n\
+          \        \"derived_locations\": json.dumps(locations, ensure_ascii=False)\n\
+          \    }\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          derived_locations:
+            children: null
+            type: string
+          togovar_query:
+            children: null
+            type: string
+        selected: false
+        title: Code_build_TogoVar_query
+        type: code
+        variables:
+        - value_selector:
+          - '1742454133751'
+          - rs_numbers
+          variable: rs_numbers
+        - value_selector:
+          - '1742454133751'
+          - hgvs_list
+          variable: hgvs_list
+        - value_selector:
+          - '1762001000001'
+          - body
+          variable: ensembl_body
+      height: 50
+      id: '1762001000002'
+      position:
+        x: 1352.5164467716666
+        y: -77.7429006754908
+      positionAbsolute:
+        x: 1352.5164467716666
+        y: -77.7429006754908
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    viewport:
+      x: -1160.3861976701667
+      y: 20.326455881386096
+      zoom: 0.6855919998924549
+  rag_pipeline_variables: []

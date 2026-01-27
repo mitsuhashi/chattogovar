@@ -1,0 +1,38 @@
+services:
+  qwen3:
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda
+    container_name: qwen3-llamacpp
+    restart: unless-stopped
+
+    # expose port:18000
+    ports:
+      - "18000:8080"
+
+    volumes:
+      - ./models:/models:ro
+
+    # nvidia-container-toolkit
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    environment:
+      # specify GPU IDs 0 and 1 
+      - CUDA_VISIBLE_DEVICES=0,1
+      - NVIDIA_VISIBLE_DEVICES=0,1
+
+    # download Qwen3-30B-A3B-Instruct-2507-Q5_K_M.gguf to ./models directory
+    command: >
+      --model /models/Qwen3-30B-A3B-Instruct-2507-Q5_K_M.gguf
+      --host 0.0.0.0
+      --port 8080
+      --ctx-size 262144 
+      --n-gpu-layers 999
+      --split-mode layer
+      --tensor-split 0.5,0.5
+      --cache-type-k q8_0
+      --cache-type-v q8_0
