@@ -25,7 +25,7 @@ This repository contains the source code, inputs, and outputs used in the study,
   - `05_compare_primary_audit.sh` Quantify agreement and changes between primary vs. audited manual ratings (e.g., ICC(2,1), weighted κ, |Δ| summaries).
   - `06_build_table_3_5.sh` Generate the final manuscript tables (Tables 3–5), including confidence intervals and statistical tests, from the aggregated results.
 - `src/` Python source code invoked by the scripts in the `pipeline` directory.
-- `web/` Public demo deployment at `https://chattogovar.dbcls.jp` (self-hosted LLM + docker-compose, etc.)
+- `web/` Public demo deployment at https://chattogovar.dbcls.jp (self-hosted LLM + docker-compose, etc.)
 
 ## Quick start: reproduce Tables 3–5
 
@@ -33,12 +33,12 @@ This repository contains the source code, inputs, and outputs used in the study,
 
 Follow Microsoft’s official instructions:
 - Create and deploy an Azure OpenAI in Microsoft Foundry Models resource:
-`https://learn.microsoft.com/en-us/azure/ai-foundry/openai/how-to/create-resource`
+https://learn.microsoft.com/en-us/azure/ai-foundry/openai/how-to/create-resource
 
 For cost control and billing configuration, see:
-- Azure OpenAI pricing: `https://azure.microsoft.com/en-us/pricing/details/azure-openai/`
-- Azure Cost Management budgets/alerts: `https://learn.microsoft.com/en-us/azure/cost-management-billing/costs/tutorial-acm-create-budgets`
--	Azure OpenAI quotas/limits: `https://learn.microsoft.com/en-us/azure/ai-foundry/openai/quotas-limits`
+- Azure OpenAI pricing: https://azure.microsoft.com/en-us/pricing/details/azure-openai/
+- Azure Cost Management budgets/alerts: https://learn.microsoft.com/en-us/azure/cost-management-billing/costs/tutorial-acm-create-budgets
+-	Azure OpenAI quotas/limits: https://learn.microsoft.com/en-us/azure/ai-foundry/openai/quotas-limits
 
 ### 2. Create `.env` from the template and fill in Azure OpenAI settings
 
