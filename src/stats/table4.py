@@ -144,6 +144,12 @@ def fmt_w(w: float) -> str:
     return f"{w:.3f}"
 
 
+def fmt_diff(x: float, digits: int = 2) -> str:
+    if not np.isfinite(x):
+        return ""
+    return f"{x:.{digits}f}"
+
+
 # ----------------------------
 # Parsing into long format
 # ----------------------------
@@ -258,6 +264,25 @@ def pairwise_wilcoxon(df_long: pd.DataFrame, eval_type: str, metric: str, a: str
     return (float(stat), float(p), int(n))
 
 
+def pairwise_diff_stats(
+    df_long: pd.DataFrame, eval_type: str, metric: str, a: str, b: str
+) -> Tuple[float, float, int]:
+    """
+    Paired difference summary for a vs b within one (eval_type, metric).
+    Returns (mean_diff, median_diff, n_pairs). Includes zero differences.
+    diff := a - b
+    """
+    sub = df_long[(df_long["eval_type"] == eval_type) & (df_long["metric"] == metric)]
+    piv = sub.pivot_table(index="ID", columns="method", values="score", aggfunc="first")
+    piv = piv.dropna(subset=[a, b], how="any")
+    n = len(piv)
+    if n < 1:
+        return (np.nan, np.nan, 0)
+
+    diff = (piv[a] - piv[b]).to_numpy(dtype=float)
+    return (float(np.mean(diff)), float(np.median(diff)), int(n))
+
+
 # ----------------------------
 # Aggregation for Table 4
 # ----------------------------
@@ -318,7 +343,10 @@ def build_main_table(
 
             out_rows.append(row)
 
-    df = pd.DataFrame(out_rows, columns=["Evaluation", "Metric"] + CANON_METHODS + ["Friedman p", "Kendall's W", "n (paired)"])
+    df = pd.DataFrame(
+        out_rows,
+        columns=["Evaluation", "Metric"] + CANON_METHODS + ["Friedman p", "Kendall's W", "n (paired)"],
+    )
     return df
 
 
@@ -341,13 +369,20 @@ def build_pairwise_table(
     for et in eval_types:
         for met in metrics:
             for a, b in comparisons:
+                mean_d, med_d, n2 = pairwise_diff_stats(df_long, et, met, a, b)
                 stat, p, n = pairwise_wilcoxon(df_long, et, met, a, b)
+
+                # Prefer n from diff_stats (includes zeros) for display; should match Wilcoxon pairing n.
+                n_disp = n2 if n2 > 0 else n
+
                 rows.append(
                     {
                         "Evaluation": et,
                         "Metric": met,
                         "Comparison": f"{a} vs {b}",
-                        "n (paired)": n,
+                        "n (paired)": n_disp,
+                        "Mean diff": fmt_diff(mean_d, digits=2),
+                        "Median diff": fmt_diff(med_d, digits=2),
                         "Wilcoxon W": "" if not np.isfinite(stat) else f"{stat:.1f}",
                         "p": "" if not np.isfinite(p) else p,
                     }
@@ -370,7 +405,20 @@ def build_pairwise_table(
         if isinstance(r["p"], float):
             r["p"] = fmt_p(r["p"])
 
-    df = pd.DataFrame(rows, columns=["Evaluation", "Metric", "Comparison", "n (paired)", "Wilcoxon W", "p", "p (Holm)"])
+    df = pd.DataFrame(
+        rows,
+        columns=[
+            "Evaluation",
+            "Metric",
+            "Comparison",
+            "n (paired)",
+            "Mean diff",
+            "Median diff",
+            "Wilcoxon W",
+            "p",
+            "p (Holm)",
+        ],
+    )
     return df
 
 

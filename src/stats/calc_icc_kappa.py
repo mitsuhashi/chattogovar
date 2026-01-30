@@ -28,7 +28,7 @@ Metrics:
 Usage:
   python calc_icc_kappa.py \
     --primary evaluation/human-primary/aggregate_human.json \
-    --audit evaluation/human-final/aggregate_human.json \
+    --secondary evaluation/human-final/aggregate_human.json \
     --out audit/primary_audit_agreement.json
 """
 
@@ -356,17 +356,17 @@ def compute(primary: List[Dict[str, Any]], secondary: List[Dict[str, Any]]) -> D
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--primary", required=True, help="Primary aggregated JSON (list of dicts)")
-    ap.add_argument("--audit", required=True, help="Audit aggregated JSON (list of dicts)")
+    ap.add_argument("--secondary", required=True, help="Secondary aggregated JSON (list of dicts)")
     ap.add_argument("--out", required=True, help="Output JSON path")
     args = ap.parse_args()
 
     p_obj = load_json(args.primary)
-    s_obj = load_json(args.audit)
+    s_obj = load_json(args.secondary)
 
     if not isinstance(p_obj, list):
         raise SystemExit("--primary must be a JSON array (list of dicts).")
     if not isinstance(s_obj, list):
-        raise SystemExit("--audit must be a JSON array (list of dicts).")
+        raise SystemExit("--secondary must be a JSON array (list of dicts).")
 
     results = compute(p_obj, s_obj)
     save_json(args.out, results)
