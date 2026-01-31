@@ -1,0 +1,60 @@
+{
+  "qY": "q7",
+  "rsXXXX": "rs571414497.md",
+  "evaluation": {
+    "ChatTogoVar": {
+      "Accuracy": {
+        "reason_ja": "case 4",
+        "score": "8"
+      },
+      "Completeness": {
+        "score": "8"
+      },
+      "Logical Consistency": {
+        "score": "9"
+      },
+      "Clarity and Conciseness": {
+        "score": "4"
+      },
+      "Evidence Support": {
+        "score": "9"
+      }
+    },
+    "GPT4o": {
+      "Accuracy": {
+        "reason_ja": "case 6-",
+        "score": "2"
+      },
+      "Completeness": {
+        "score": "2"
+      },
+      "Logical Consistency": {
+        "score": "7"
+      },
+      "Clarity and Conciseness": {
+        "score": "7"
+      },
+      "Evidence Support": {
+        "score": "2"
+      }
+    },
+    "VarChat": {
+      "Accuracy": {
+        "reason_ja": "case 3 +4 ",
+        "score": "4"
+      },
+      "Completeness": {
+        "score": "4"
+      },
+      "Logical Consistency": {
+        "score": "9"
+      },
+      "Clarity and Conciseness": {
+        "score": "5"
+      },
+      "Evidence Support": {
+        "score": "9"
+      }
+    }
+  }
+}

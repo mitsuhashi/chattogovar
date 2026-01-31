@@ -1,0 +1,60 @@
+{
+  "qY": "q41",
+  "rsXXXX": "rs121913529.md",
+  "evaluation": {
+    "ChatTogoVar": {
+      "Accuracy": {
+        "score": "9",
+        "reason_ja": "正解。アレル違いのミスセンス"
+      },
+      "Completeness": {
+        "score": "9"
+      },
+      "Logical Consistency": {
+        "score": "8"
+      },
+      "Clarity and Conciseness": {
+        "score": "9"
+      },
+      "Evidence Support": {
+        "score": "8"
+      }
+    },
+    "GPT4o": {
+      "Accuracy": {
+        "score": "0",
+        "reason_ja": "ハルシネーション"
+      },
+      "Completeness": {
+        "score": "0"
+      },
+      "Logical Consistency": {
+        "score": "8"
+      },
+      "Clarity and Conciseness": {
+        "score": "8"
+      },
+      "Evidence Support": {
+        "score": "0"
+      }
+    },
+    "VarChat": {
+      "Accuracy": {
+        "reason_ja": "case 3\n p.Gly12Val以外のバリアントに言及なし",
+        "score": "1"
+      },
+      "Completeness": {
+        "score": "1"
+      },
+      "Logical Consistency": {
+        "score": "9"
+      },
+      "Clarity and Conciseness": {
+        "score": "6"
+      },
+      "Evidence Support": {
+        "score": "9"
+      }
+    }
+  }
+}

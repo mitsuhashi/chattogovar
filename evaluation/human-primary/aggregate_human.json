@@ -798,7 +798,7 @@
         "BestAnswer":"ChatTogoVar",
         "ChatTogoVar_Total":45,
         "GPT-4o_Total":17,
-        "VarChat_Total":0,
+        "VarChat_Total":37,
         "ChatTogoVar_Accuracy":9,
         "ChatTogoVar_Clarity and Conciseness":9,
         "ChatTogoVar_Completeness":9,
@@ -809,11 +809,11 @@
         "GPT-4o_Completeness":5,
         "GPT-4o_Evidence Support":1,
         "GPT-4o_Logical Consistency":5,
-        "VarChat_Accuracy":0,
-        "VarChat_Clarity and Conciseness":0,
-        "VarChat_Completeness":0,
-        "VarChat_Evidence Support":0,
-        "VarChat_Logical Consistency":0
+        "VarChat_Accuracy":9,
+        "VarChat_Clarity and Conciseness":6,
+        "VarChat_Completeness":8,
+        "VarChat_Evidence Support":5,
+        "VarChat_Logical Consistency":9
     },
     {
         "ID":35,
@@ -1158,7 +1158,7 @@
         "BestAnswer":"ChatTogoVar",
         "ChatTogoVar_Total":35,
         "GPT-4o_Total":26,
-        "VarChat_Total":24,
+        "VarChat_Total":29,
         "ChatTogoVar_Accuracy":7,
         "ChatTogoVar_Clarity and Conciseness":7,
         "ChatTogoVar_Completeness":7,
@@ -1170,7 +1170,7 @@
         "GPT-4o_Evidence Support":4,
         "GPT-4o_Logical Consistency":6,
         "VarChat_Accuracy":7,
-        "VarChat_Clarity and Conciseness":0,
+        "VarChat_Clarity and Conciseness":5,
         "VarChat_Completeness":5,
         "VarChat_Evidence Support":5,
         "VarChat_Logical Consistency":7

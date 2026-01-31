@@ -1,0 +1,61 @@
+{
+  "qY": "q45",
+  "rsXXXX": "rs1170153450.md",
+  "evaluation": {
+    "ChatTogoVar": {
+      "Accuracy": {
+        "reason_ja": "case 2",
+        "score": "6"
+      },
+      "Completeness": {
+        "score": "6"
+      },
+      "Logical Consistency": {
+        "score": "9"
+      },
+      "Clarity and Conciseness": {
+        "score": "9"
+      },
+      "Evidence Support": {
+        "score": "9"
+      }
+    },
+    "GPT4o": {
+      "Accuracy": {
+        "reason_ja": "case 2--  遺伝子情報を取り逃がしている",
+        "score": "4"
+      },
+      "Completeness": {
+        "score": "5"
+      },
+      "Logical Consistency": {
+        "score": "9"
+      },
+      "Clarity and Conciseness": {
+        "score": "9"
+      },
+      "Evidence Support": {
+        "score": "4",
+        "reason_ja": "遺伝子情報を取り逃がしている"
+      }
+    },
+    "VarChat": {
+      "Accuracy": {
+        "reason_ja": "case 2",
+        "score": "6"
+      },
+      "Completeness": {
+        "score": "6"
+      },
+      "Logical Consistency": {
+        "score": "9"
+      },
+      "Clarity and Conciseness": {
+        "score": "9"
+      },
+      "Evidence Support": {
+        "score": "9"
+      }
+    }
+  }
+}
