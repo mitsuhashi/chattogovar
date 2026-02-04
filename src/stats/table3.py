@@ -3,18 +3,17 @@
 
 """
 table3.py
-Generate Table 3 (counts of highest-scoring answers) for:
-- Manual evaluation JSON (e.g., evaluation/human-primary/aggregate_human.json)
-- LLM-based evaluation JSON (e.g., evaluation/gpt-4o/aggregate_aqes.json)
+Generate Table 3 (counts of highest-scoring answers).
 
-This version:
-- DOES NOT use the JSON field "BestAnswer".
-- Determines the winner by comparing TOTAL scores across ChatTogoVar / GPT-4o / VarChat.
-- Adds a "Tie (no unique winner)" row so that totals sum to n (150 / 1,500).
-- Optionally adds an "NA (missing totals)" row if any record lacks required totals.
+Main table:
+- Manual evaluation JSON (typically human-mean/aggregate_human.json)
+- LLM-based evaluation JSON
 
-Output:
-- Markdown table written to --out.
+Supplementary (optional):
+- Primary manual JSON
+- Secondary manual JSON
+Produces ONE table with 3 columns:
+  Primary evaluator | Secondary evaluator | LLM-based evaluation
 """
 
 from __future__ import annotations
@@ -91,12 +90,6 @@ def determine_status(row: Dict[str, Any]) -> Tuple[str, Optional[str]]:
 
 
 def count_by_winner(records: List[Dict[str, Any]]) -> Dict[str, int]:
-    """
-    Counts:
-      - per-method winners
-      - tie
-      - na (missing totals)
-    """
     counts = {m: 0 for m in METHODS}
     counts["Tie"] = 0
     counts["NA"] = 0
@@ -109,7 +102,6 @@ def count_by_winner(records: List[Dict[str, Any]]) -> Dict[str, int]:
             counts["Tie"] += 1
         else:
             counts["NA"] += 1
-
     return counts
 
 
@@ -118,7 +110,8 @@ def fmt_cell(k: int, denom: int) -> str:
     return f"{k:,} ({pct:.1f}%)"
 
 
-def build_table3(manual_records: List[Dict[str, Any]], llm_records: List[Dict[str, Any]]) -> pd.DataFrame:
+def build_table3_two_cols(manual_records: List[Dict[str, Any]], llm_records: List[Dict[str, Any]]) -> pd.DataFrame:
+    """Main table (Manual vs LLM)."""
     cm = count_by_winner(manual_records)
     cl = count_by_winner(llm_records)
 
@@ -135,7 +128,6 @@ def build_table3(manual_records: List[Dict[str, Any]], llm_records: List[Dict[st
             }
         )
 
-    # Always show Tie row (to make totals sum to n)
     rows.append(
         {
             "Model": "Tie (no unique winner)",
@@ -144,7 +136,6 @@ def build_table3(manual_records: List[Dict[str, Any]], llm_records: List[Dict[st
         }
     )
 
-    # Show NA row only if present in either dataset
     if cm["NA"] > 0 or cl["NA"] > 0:
         rows.append(
             {
@@ -154,7 +145,6 @@ def build_table3(manual_records: List[Dict[str, Any]], llm_records: List[Dict[st
             }
         )
 
-    # Add Total row for clarity
     total_manual = sum(cm[m] for m in METHODS) + cm["Tie"] + cm["NA"]
     total_llm = sum(cl[m] for m in METHODS) + cl["Tie"] + cl["NA"]
     rows.append(
@@ -168,9 +158,72 @@ def build_table3(manual_records: List[Dict[str, Any]], llm_records: List[Dict[st
     return pd.DataFrame(rows, columns=["Model", "Manual Evaluation", "LLM-Based Evaluation"])
 
 
+def build_table3_three_cols(
+    primary_records: List[Dict[str, Any]],
+    secondary_records: List[Dict[str, Any]],
+    llm_records: List[Dict[str, Any]],
+) -> pd.DataFrame:
+    """Supplementary table (Primary | Secondary | LLM)."""
+    c1 = count_by_winner(primary_records)
+    c2 = count_by_winner(secondary_records)
+    cl = count_by_winner(llm_records)
+
+    n1 = len(primary_records)
+    n2 = len(secondary_records)
+    nl = len(llm_records)
+
+    def total(c: Dict[str, int]) -> int:
+        return sum(c[m] for m in METHODS) + c["Tie"] + c["NA"]
+
+    has_na = (c1["NA"] > 0) or (c2["NA"] > 0) or (cl["NA"] > 0)
+
+    rows: List[Dict[str, str]] = []
+    for m in METHODS:
+        rows.append(
+            {
+                "Model": m,
+                "Primary evaluator": fmt_cell(c1[m], n1),
+                "Secondary evaluator": fmt_cell(c2[m], n2),
+                "LLM-based evaluation": fmt_cell(cl[m], nl),
+            }
+        )
+
+    rows.append(
+        {
+            "Model": "Tie (no unique winner)",
+            "Primary evaluator": fmt_cell(c1["Tie"], n1),
+            "Secondary evaluator": fmt_cell(c2["Tie"], n2),
+            "LLM-based evaluation": fmt_cell(cl["Tie"], nl),
+        }
+    )
+
+    if has_na:
+        rows.append(
+            {
+                "Model": "NA (missing totals)",
+                "Primary evaluator": fmt_cell(c1["NA"], n1),
+                "Secondary evaluator": fmt_cell(c2["NA"], n2),
+                "LLM-based evaluation": fmt_cell(cl["NA"], nl),
+            }
+        )
+
+    rows.append(
+        {
+            "Model": "Total",
+            "Primary evaluator": f"{total(c1):,} (100.0%)" if n1 > 0 else "0 (0.0%)",
+            "Secondary evaluator": f"{total(c2):,} (100.0%)" if n2 > 0 else "0 (0.0%)",
+            "LLM-based evaluation": f"{total(cl):,} (100.0%)" if nl > 0 else "0 (0.0%)",
+        }
+    )
+
+    return pd.DataFrame(
+        rows,
+        columns=["Model", "Primary evaluator", "Secondary evaluator", "LLM-based evaluation"],
+    )
+
+
 def save_markdown(df: pd.DataFrame, out_path: str) -> None:
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
-    # pandas.to_markdown uses tabulate (assumed installed)
     md = df.to_markdown(index=False) + "\n"
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(md)
@@ -178,19 +231,34 @@ def save_markdown(df: pd.DataFrame, out_path: str) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--manual", required=True, help="Manual evaluation JSON (list of records)")
-    ap.add_argument("--llm", required=True, help="LLM-based evaluation JSON (list of records)")
-    ap.add_argument("--out", required=True, help="Output markdown path (e.g., evaluation/tables/table3.md)")
+    ap.add_argument("--manual", required=True, help="Manual evaluation JSON (typically human-mean)")
+    ap.add_argument("--llm", required=True, help="LLM-based evaluation JSON")
+    ap.add_argument("--out", required=True, help="Output markdown path (main table)")
+
+    # Optional supplementary (3-column)
+    ap.add_argument("--manual_primary", default=None, help="Primary rater manual JSON (optional)")
+    ap.add_argument("--manual_secondary", default=None, help="Secondary rater manual JSON (optional)")
+    ap.add_argument("--out_supp", default=None, help="Output markdown path (supplementary table)")
+
     args = ap.parse_args()
 
     manual = load_json(args.manual)
     llm = load_json(args.llm)
 
     if not isinstance(manual, list) or not isinstance(llm, list):
-        raise SystemExit("ERROR: both inputs must be JSON arrays (lists).")
+        raise SystemExit("ERROR: both --manual and --llm must be JSON arrays (lists).")
 
-    df = build_table3(manual, llm)
-    save_markdown(df, args.out)
+    df_main = build_table3_two_cols(manual, llm)
+    save_markdown(df_main, args.out)
+
+    if args.manual_primary and args.manual_secondary and args.out_supp:
+        m1 = load_json(args.manual_primary)
+        m2 = load_json(args.manual_secondary)
+        if not isinstance(m1, list) or not isinstance(m2, list):
+            raise SystemExit("ERROR: --manual_primary/--manual_secondary must be JSON arrays (lists).")
+
+        df_supp = build_table3_three_cols(m1, m2, llm)
+        save_markdown(df_supp, args.out_supp)
 
 
 if __name__ == "__main__":

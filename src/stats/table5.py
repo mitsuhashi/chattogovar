@@ -5,43 +5,22 @@
 table5.py
 
 Generate Table 5 (category-level aggregation) from:
-  - manual evaluation JSON (list of dicts; has "ID", "QuestionNumber", "..._Total", "..._<metric>")
-  - llm evaluation JSON (list of dicts; list order is treated as ID=1..N; has "QuestionNumber", "...", and scores)
+  - manual evaluation JSON (list of dicts; has "ID", "QuestionNumber", "..._Total")
+  - llm evaluation JSON (list of dicts; list order is treated as ID=1..N; has "QuestionNumber", "<Method>" totals)
   - q->category mapping JSON (e.g., {"q1": "Basic information", ...})
 
 Outputs TWO markdown files:
-  - table5.md               : ONE table (per Evaluation x Category) with mean Total score (95% bootstrap CI)
-                              for each method, plus Friedman p and Kendall's W,
-                              AND Number of Highest-Scoring Answers per method (unique-winner; Table 3 compatible),
-                              AND Number of ties (no unique winner) for the highest score
-  - table5_supplementary.md : ONE table with pairwise Wilcoxon tests on Total score per Evaluation x Category
-                              (with Holm adjustment) AND Median paired differences (A−B), like Table 4 supplementary.
+  - table5.md               : MAIN table (fixed to Manual(mean) + LLM only)
+  - table5_supplementary.md : Supplementary pairwise Wilcoxon tables
+                              - always includes Manual(mean) and LLM
+                              - additionally includes Manual(primary) and Manual(secondary) ONLY if provided
 
-Ordering:
-  - Rows are ordered by Evaluation (Manual -> LLM), then by Category in the order induced by q2cat's q-number order
-    (i.e., categories ordered by the first q-number that maps to the category).
-
-Tie handling for "highest" (Table 3 compatible):
-  - For each ID within a group (Evaluation × Category), compute the max score across methods.
-  - If there is a UNIQUE winner, that method gets +1.
-  - If the max is tied across >=2 methods, NO method gets +1; the tie is counted in Tie_no_unique_winner.
-
-Formatting:
-  - p-values are formatted as "<0.001" when p < 0.001.
-  - 95% CI is formatted as "[lo, hi]" (comma-separated; standard).
-
-Assumptions:
-  - Methods: ChatTogoVar, GPT-4o, VarChat
-  - "Total" column key patterns:
-      manual: "<Method>_Total"
-      llm   : "<Method>"   (overall total score)
-  - Question identifier: "QuestionNumber" like "q1"..."q50"
-  - IDs:
-      manual -> uses record["ID"]
-      llm    -> uses array index (1-based)
+Sensitivity analysis policy (as requested):
+  - Main: Manual(mean) + LLM
+  - Supp: Manual(mean) + Manual(primary) + Manual(secondary) + LLM (when primary/secondary are provided)
 
 Dependencies:
-  - pandas, numpy, scipy, tabulate (for DataFrame.to_markdown)
+  - pandas, numpy, scipy, tabulate
 """
 
 from __future__ import annotations
@@ -60,6 +39,9 @@ from scipy.stats import friedmanchisquare, wilcoxon
 CANON_METHODS = ["ChatTogoVar", "GPT-4o", "VarChat"]
 
 
+# ----------------------------
+# IO / helpers
+# ----------------------------
 def ensure_parent_dir(path: str) -> None:
     d = os.path.dirname(os.path.abspath(path))
     if d:
@@ -70,6 +52,29 @@ def save_text(path: str, text: str) -> None:
     ensure_parent_dir(path)
     with open(path, "w", encoding="utf-8") as f:
         f.write(text)
+
+
+def load_json(path: str) -> Any:
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def is_number(x: Any) -> bool:
+    if isinstance(x, (int, float, np.integer, np.floating)) and not isinstance(x, bool):
+        return math.isfinite(float(x))
+    if isinstance(x, str):
+        try:
+            v = float(x)
+            return math.isfinite(v)
+        except Exception:
+            return False
+    return False
+
+
+def to_float(x: Any) -> float:
+    if isinstance(x, (int, float, np.integer, np.floating)) and not isinstance(x, bool):
+        return float(x)
+    return float(str(x))
 
 
 def format_p(p: float) -> str:
@@ -111,31 +116,7 @@ def holm_adjust(pvals: List[float]) -> List[float]:
     return adj.tolist()
 
 
-def load_json(path: str) -> Any:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def is_number(x: Any) -> bool:
-    if isinstance(x, (int, float, np.integer, np.floating)) and not isinstance(x, bool):
-        return math.isfinite(float(x))
-    if isinstance(x, str):
-        try:
-            v = float(x)
-            return math.isfinite(v)
-        except Exception:
-            return False
-    return False
-
-
-def to_float(x: Any) -> float:
-    if isinstance(x, (int, float, np.integer, np.floating)) and not isinstance(x, bool):
-        return float(x)
-    return float(str(x))
-
-
 def q_key_to_int(q: str) -> int:
-    """Convert 'q12' -> 12 for ordering; unknown formats go to a large number."""
     s = str(q).strip()
     if len(s) >= 2 and (s[0].lower() == "q"):
         try:
@@ -146,9 +127,6 @@ def q_key_to_int(q: str) -> int:
 
 
 def build_category_order(q2cat: Dict[str, str]) -> List[str]:
-    """
-    Return categories ordered by the first q-number (q1..q50) that maps to each category.
-    """
     cats: List[str] = []
     seen = set()
     for q, cat in sorted(q2cat.items(), key=lambda kv: q_key_to_int(kv[0])):
@@ -158,8 +136,10 @@ def build_category_order(q2cat: Dict[str, str]) -> List[str]:
     return cats
 
 
+# ----------------------------
+# Score extraction
+# ----------------------------
 def extract_total_scores_manual(rec: Dict[str, Any]) -> Dict[str, float]:
-    # manual keys: "<Method>_Total"
     out: Dict[str, float] = {}
     for m in CANON_METHODS:
         k = f"{m}_Total"
@@ -169,7 +149,6 @@ def extract_total_scores_manual(rec: Dict[str, Any]) -> Dict[str, float]:
 
 
 def extract_total_scores_llm(rec: Dict[str, Any]) -> Dict[str, float]:
-    # llm keys: "<Method>" (overall total)
     out: Dict[str, float] = {}
     for m in CANON_METHODS:
         if m in rec and is_number(rec[m]):
@@ -177,7 +156,10 @@ def extract_total_scores_llm(rec: Dict[str, Any]) -> Dict[str, float]:
     return out
 
 
-def build_long_df_manual(manual: List[Dict[str, Any]], q2cat: Dict[str, str]) -> pd.DataFrame:
+# ----------------------------
+# Build long dataframes
+# ----------------------------
+def build_long_df_manual(manual: List[Dict[str, Any]], q2cat: Dict[str, str], eval_label: str) -> pd.DataFrame:
     rows: List[Dict[str, Any]] = []
     for rec in manual:
         q = str(rec.get("QuestionNumber", "")).strip()
@@ -193,7 +175,7 @@ def build_long_df_manual(manual: List[Dict[str, Any]], q2cat: Dict[str, str]) ->
         for m, sc in scores.items():
             rows.append(
                 {
-                    "eval": "Manual",
+                    "eval": eval_label,
                     "ID": int(rid),
                     "q": q,
                     "category": cat,
@@ -204,7 +186,7 @@ def build_long_df_manual(manual: List[Dict[str, Any]], q2cat: Dict[str, str]) ->
     return pd.DataFrame(rows)
 
 
-def build_long_df_llm(llm: List[Dict[str, Any]], q2cat: Dict[str, str]) -> pd.DataFrame:
+def build_long_df_llm(llm: List[Dict[str, Any]], q2cat: Dict[str, str], eval_label: str = "LLM") -> pd.DataFrame:
     rows: List[Dict[str, Any]] = []
     for i, rec in enumerate(llm, start=1):
         q = str(rec.get("QuestionNumber", "")).strip()
@@ -216,8 +198,8 @@ def build_long_df_llm(llm: List[Dict[str, Any]], q2cat: Dict[str, str]) -> pd.Da
         for m, sc in scores.items():
             rows.append(
                 {
-                    "eval": "LLM",
-                    "ID": int(i),  # array index as ID
+                    "eval": eval_label,
+                    "ID": int(i),
                     "q": q,
                     "category": cat,
                     "method": m,
@@ -227,6 +209,9 @@ def build_long_df_llm(llm: List[Dict[str, Any]], q2cat: Dict[str, str]) -> pd.Da
     return pd.DataFrame(rows)
 
 
+# ----------------------------
+# Tests / summaries
+# ----------------------------
 @dataclass
 class FriedmanResult:
     chi2: float
@@ -236,10 +221,6 @@ class FriedmanResult:
 
 
 def friedman_test_by_group(long_df: pd.DataFrame) -> FriedmanResult:
-    """
-    Friedman test (paired) across the three methods within one group (Evaluation x Category).
-    Pairing is by ID; requires all three methods present for each ID.
-    """
     piv = long_df.pivot_table(index="ID", columns="method", values="score", aggfunc="first")
     piv = piv.dropna(subset=CANON_METHODS, how="any")
     n = len(piv)
@@ -257,20 +238,6 @@ def friedman_test_by_group(long_df: pd.DataFrame) -> FriedmanResult:
 
 
 def count_highest_scoring_answers(long_df: pd.DataFrame) -> Tuple[Dict[str, int], int, int]:
-    """
-    Count the number of highest-scoring answers per method within one group (Evaluation x Category).
-    Pairing is by ID and requires all three methods present for the ID.
-
-    Tie handling (Table 3 compatible; unique-winner counts):
-      - If there is a unique highest score for an ID, ONLY that method gets +1.
-      - If there is a tie for the highest score (>=2 methods share the max),
-        NO method gets +1; the tie is counted in n_ties.
-
-    Returns:
-      (counts_by_method, n_complete, n_ties)
-      - n_complete: number of IDs with all three methods present
-      - n_ties    : number of IDs where the highest score is tied (>= 2 methods share the max)
-    """
     piv = long_df.pivot_table(index="ID", columns="method", values="score", aggfunc="first")
     piv = piv.dropna(subset=CANON_METHODS, how="any")
     n = int(len(piv))
@@ -281,13 +248,11 @@ def count_highest_scoring_answers(long_df: pd.DataFrame) -> Tuple[Dict[str, int]
 
     vals = piv[CANON_METHODS].to_numpy(dtype=float)
     row_max = np.max(vals, axis=1, keepdims=True)
-    is_best = np.isclose(vals, row_max)  # tie-aware max flags
-    n_best = is_best.sum(axis=1)         # how many methods achieve the max per ID
+    is_best = np.isclose(vals, row_max)
+    n_best = is_best.sum(axis=1)
 
-    # ties: no unique winner
     n_ties = int((n_best >= 2).sum())
 
-    # unique winners only
     unique_mask = (n_best == 1)
     if unique_mask.any():
         winner_idx = np.argmax(is_best[unique_mask, :], axis=1)
@@ -298,10 +263,6 @@ def count_highest_scoring_answers(long_df: pd.DataFrame) -> Tuple[Dict[str, int]
 
 
 def wilcoxon_pair(long_df: pd.DataFrame, a: str, b: str) -> Tuple[float, float, int]:
-    """
-    Paired Wilcoxon signed-rank test between methods a and b within one group (Evaluation x Category).
-    Returns (W_stat, p_value, n_pairs).
-    """
     piv = long_df.pivot_table(index="ID", columns="method", values="score", aggfunc="first")
     piv = piv.dropna(subset=[a, b], how="any")
     n = len(piv)
@@ -326,10 +287,6 @@ def wilcoxon_pair(long_df: pd.DataFrame, a: str, b: str) -> Tuple[float, float, 
 
 
 def median_diff_pair(long_df: pd.DataFrame, a: str, b: str) -> Tuple[float, int]:
-    """
-    Median paired difference (A−B) within one group (Evaluation x Category), paired by ID.
-    Returns (median_diff, n_pairs).
-    """
     piv = long_df.pivot_table(index="ID", columns="method", values="score", aggfunc="first")
     piv = piv.dropna(subset=[a, b], how="any")
     n = int(len(piv))
@@ -354,26 +311,18 @@ def mean_ci_str(x: np.ndarray, alpha: float, n_boot: int, seed: int) -> str:
     return f"{mu:.2f} [{lo:.2f}, {hi:.2f}]"
 
 
+# ----------------------------
+# Table builders
+# ----------------------------
 def make_table5_main(
     long_all: pd.DataFrame,
     alpha: float,
     n_boot: int,
     seed: int,
     category_order: List[str],
+    eval_order: List[str],
 ) -> pd.DataFrame:
-    """
-    Main table: one row per (Evaluation, Category).
-
-    Left-side columns:
-      - N_highest_ChatTogoVar, N_highest_GPT-4o, N_highest_VarChat (unique highest only)
-      - Tie_no_unique_winner (highest score shared by >=2 methods)
-
-    Ordering:
-      - Evaluation: Manual -> LLM
-      - Category  : category_order (derived from q2cat q-number ordering)
-    """
     out_rows: List[Dict[str, Any]] = []
-    eval_order = ["Manual", "LLM"]
 
     for ev in eval_order:
         for cat in category_order:
@@ -410,18 +359,9 @@ def make_table5_main(
     return df[cols]
 
 
-def make_table5_pairwise(long_all: pd.DataFrame, category_order: List[str]) -> pd.DataFrame:
-    """
-    Supplementary table: pairwise Wilcoxon tests per (Evaluation, Category), Holm-adjusted,
-    with Median paired differences (A−B) like Table 4 supplementary.
-
-    Ordering:
-      - Evaluation: Manual -> LLM
-      - Category  : category_order
-    """
+def make_table5_pairwise(long_all: pd.DataFrame, category_order: List[str], eval_order: List[str]) -> pd.DataFrame:
     pairs = [("ChatTogoVar", "GPT-4o"), ("ChatTogoVar", "VarChat"), ("GPT-4o", "VarChat")]
     rows: List[Dict[str, Any]] = []
-    eval_order = ["Manual", "LLM"]
 
     for ev in eval_order:
         for cat in category_order:
@@ -434,7 +374,7 @@ def make_table5_pairwise(long_all: pd.DataFrame, category_order: List[str]) -> p
 
             for a, b in pairs:
                 stat, p, n = wilcoxon_pair(sub, a, b)
-                med, n_med = median_diff_pair(sub, a, b)
+                med, _n_med = median_diff_pair(sub, a, b)
 
                 raw_pvals.append(p if math.isfinite(p) else 1.0)
                 tmp_rows.append(
@@ -479,7 +419,7 @@ def write_markdown_main(df_main: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
-def write_markdown_supp(df_pair: pd.DataFrame) -> str:
+def write_markdown_supp_blocks(df_pair: pd.DataFrame) -> str:
     lines: List[str] = []
     lines.append("# Table 5 Supplementary (Pairwise Wilcoxon tests; Total score)\n")
     lines.append(
@@ -489,15 +429,25 @@ def write_markdown_supp(df_pair: pd.DataFrame) -> str:
         "positive values indicate higher scores for A than B (negative values indicate the opposite). "
         "p-values are formatted as “<0.001” when p < 0.001.\n"
     )
-    lines.append(df_to_markdown_tabulate(df_pair))
-    lines.append("")
+
+    for ev in df_pair["Evaluation"].drop_duplicates().tolist():
+        sub = df_pair[df_pair["Evaluation"] == ev]
+        lines.append(f"## {ev}\n")
+        lines.append(df_to_markdown_tabulate(sub))
+        lines.append("")
+
     return "\n".join(lines)
 
 
+# ----------------------------
+# Main
+# ----------------------------
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--manual", required=True, help="Manual evaluation JSON (aggregate_human.json)")
-    ap.add_argument("--llm", required=True, help="LLM evaluation JSON (aggregate_aqes.json)")
+    ap.add_argument("--manual", required=True, help="Manual evaluation JSON (aggregate_human.json; human-mean)")
+    ap.add_argument("--manual_primary", default=None, help="Primary rater manual JSON (optional)")
+    ap.add_argument("--manual_secondary", default=None, help="Secondary rater manual JSON (optional)")
+    ap.add_argument("--llm", required=True, help="LLM evaluation JSON (aggregate_llm.json)")
     ap.add_argument("--q2cat", required=True, help="QuestionNumber (q1..q50) -> category JSON")
     ap.add_argument("--out_main", required=True, help="Output markdown for main table (table5.md)")
     ap.add_argument("--out_supp", required=True, help="Output markdown for supplementary table (table5_supplementary.md)")
@@ -506,23 +456,46 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=1, help="RNG seed (default 1)")
     args = ap.parse_args()
 
-    manual = load_json(args.manual)
+    manual_mean = load_json(args.manual)
     llm = load_json(args.llm)
     q2cat = load_json(args.q2cat)
     category_order = build_category_order(q2cat)
 
-    df_m = build_long_df_manual(manual, q2cat)
-    df_l = build_long_df_llm(llm, q2cat)
-    long_all = pd.concat([df_m, df_l], ignore_index=True)
+    # Build long dfs
+    df_parts: List[pd.DataFrame] = []
+    df_parts.append(build_long_df_manual(manual_mean, q2cat, eval_label="Manual (mean)"))
+    df_parts.append(build_long_df_llm(llm, q2cat, eval_label="LLM"))
 
+    have_raters = bool(args.manual_primary) and bool(args.manual_secondary)
+    if have_raters:
+        manual_p = load_json(args.manual_primary)
+        manual_s = load_json(args.manual_secondary)
+        df_parts.append(build_long_df_manual(manual_p, q2cat, eval_label="Manual (primary)"))
+        df_parts.append(build_long_df_manual(manual_s, q2cat, eval_label="Manual (secondary)"))
+
+    long_all = pd.concat(df_parts, ignore_index=True)
+
+    # MAIN is fixed to Manual(mean) + LLM only
+    eval_order_main: List[str] = ["Manual (mean)", "LLM"]
     df_main = make_table5_main(
-        long_all, alpha=args.alpha, n_boot=args.n_boot, seed=args.seed, category_order=category_order
+        long_all,
+        alpha=args.alpha,
+        n_boot=args.n_boot,
+        seed=args.seed,
+        category_order=category_order,
+        eval_order=eval_order_main,
     )
     md_main = write_markdown_main(df_main)
     save_text(args.out_main, md_main)
 
-    df_pair = make_table5_pairwise(long_all, category_order=category_order)
-    md_supp = write_markdown_supp(df_pair)
+    # SUP includes primary/secondary only if provided
+    eval_order_supp: List[str] = ["Manual (mean)"]
+    if have_raters:
+        eval_order_supp += ["Manual (primary)", "Manual (secondary)"]
+    eval_order_supp += ["LLM"]
+
+    df_pair = make_table5_pairwise(long_all, category_order=category_order, eval_order=eval_order_supp)
+    md_supp = write_markdown_supp_blocks(df_pair)
     save_text(args.out_supp, md_supp)
 
 

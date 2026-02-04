@@ -11,15 +11,17 @@ Inputs:
   --manual  : manual evaluation JSON (list of dicts; has "ID" field)
   --llm     : LLM-based evaluation JSON (list of dicts; ID is array index + 1)
 
-Assumptions (as you stated):
-  - Labels are consistent across human and LLM JSON:
-      ChatTogoVar_Accuracy, GPT-4o_Accuracy, VarChat_Accuracy, ... etc
-  - Totals exist as:
-      Manual:  ChatTogoVar_Total / GPT-4o_Total / VarChat_Total
-      LLM:     ChatTogoVar / GPT-4o / VarChat   (and sometimes *_Total; we accept both)
+Optional (for sensitivity analysis):
+  --manual_primary   : primary rater manual JSON
+  --manual_secondary : secondary rater manual JSON
 
-Dependencies:
-  pip install pandas numpy scipy tabulate
+Behavior:
+  - Main table uses:
+      Manual (from --manual; typically human-mean) + LLM
+  - Supplementary table:
+      * Default (no primary/secondary): one combined table for Manual + LLM (same as before).
+      * If primary & secondary are provided: outputs 3 blocks (Manual mean / Manual primary / Manual secondary).
+        Holm adjustment is applied WITHIN each block (recommended for sensitivity analysis).
 """
 
 from __future__ import annotations
@@ -38,7 +40,6 @@ from scipy.stats import friedmanchisquare, wilcoxon
 
 CANON_METHODS = ["ChatTogoVar", "GPT-4o", "VarChat"]
 
-# Order for nicer tables (we keep any additional metrics after these, if present)
 PREFERRED_METRIC_ORDER = [
     "Total",
     "Accuracy",
@@ -156,9 +157,9 @@ def fmt_diff(x: float, digits: int = 2) -> str:
 def parse_records_to_long_df(records: List[Dict[str, Any]], eval_type: str) -> pd.DataFrame:
     """
     Returns long df: columns = [eval_type, ID, method, metric, score]
-    eval_type: "Manual" or "LLM"
+    eval_type: e.g., "Manual", "LLM", "Manual (mean)", ...
     ID rule:
-      - Manual: use rec["ID"]
+      - Manual*: use rec["ID"]
       - LLM: use array index + 1
     """
     rows: List[Tuple[str, int, str, str, float]] = []
@@ -172,8 +173,6 @@ def parse_records_to_long_df(records: List[Dict[str, Any]], eval_type: str) -> p
             qid = i + 1
 
         # 1) Totals: accept both styles
-        #   Manual: ChatTogoVar_Total / GPT-4o_Total / VarChat_Total
-        #   LLM: ChatTogoVar / GPT-4o / VarChat  (and possibly *_Total)
         for m in CANON_METHODS:
             if m in rec and is_number(rec[m]):
                 rows.append((eval_type, qid, m, "Total", to_float(rec[m])))
@@ -190,19 +189,15 @@ def parse_records_to_long_df(records: List[Dict[str, Any]], eval_type: str) -> p
             if not is_number(v):
                 continue
 
-            # split at first underscore to preserve metric names containing underscores (unlikely)
             method, metric = k.split("_", 1)
             if method not in CANON_METHODS:
                 continue
             if metric == "Total":
-                # already handled above
                 continue
 
             rows.append((eval_type, qid, method, metric, to_float(v)))
 
     df = pd.DataFrame(rows, columns=["eval_type", "ID", "method", "metric", "score"])
-
-    # Normalize metric names if needed (optional; keeping as-is because your JSON uses spaces already)
     df["metric"] = df["metric"].astype(str)
     return df
 
@@ -257,7 +252,6 @@ def pairwise_wilcoxon(df_long: pd.DataFrame, eval_type: str, metric: str, a: str
     y = piv[b].to_numpy()
     diff = x - y
     if np.allclose(diff, 0):
-        # all ties
         return (0.0, 1.0, int(n))
 
     stat, p = wilcoxon(x, y, alternative="two-sided", mode="auto")
@@ -284,7 +278,7 @@ def pairwise_diff_stats(
 
 
 # ----------------------------
-# Aggregation for Table 4
+# Aggregation for Table 4 (Main)
 # ----------------------------
 def compute_mean_ci_block(
     df_long: pd.DataFrame,
@@ -316,8 +310,10 @@ def build_main_table(
     n_boot: int,
     seed: int,
     alpha: float,
+    manual_label: str,
 ) -> pd.DataFrame:
-    eval_types = ["Manual", "LLM"]
+    # Main table shows Manual(mean) and LLM
+    eval_types = [manual_label, "LLM"]
     metrics = sorted(df_long["metric"].unique().tolist(), key=metric_sort_key)
 
     out_rows = []
@@ -325,12 +321,10 @@ def build_main_table(
         for met in metrics:
             row: Dict[str, Any] = {"Evaluation": et, "Metric": met}
 
-            # mean [CI]
             for m in CANON_METHODS:
                 mean, lo, hi, _n = compute_mean_ci_block(df_long, et, met, m, n_boot, seed, alpha)
                 row[m] = fmt_mean_ci(mean, lo, hi, digits=2)
 
-            # Friedman + W (paired across methods)
             fr = friedman_for_metric(df_long, et, met)
             if fr is None:
                 row["Friedman p"] = ""
@@ -350,58 +344,94 @@ def build_main_table(
     return df
 
 
-def build_pairwise_table(
+# ----------------------------
+# Supplementary: pairwise Wilcoxon
+# ----------------------------
+def build_pairwise_table_for_evaltypes(
     df_long: pd.DataFrame,
+    eval_types: List[str],
+    holm_within_eval: bool,
 ) -> pd.DataFrame:
-    eval_types = ["Manual", "LLM"]
     metrics = sorted(df_long["metric"].unique().tolist(), key=metric_sort_key)
-
     comparisons = [
         ("ChatTogoVar", "GPT-4o"),
         ("ChatTogoVar", "VarChat"),
         ("GPT-4o", "VarChat"),
     ]
 
-    rows = []
-    pvals = []
-    meta = []  # store (row_index) mapping for Holm later
+    rows: List[Dict[str, Any]] = []
 
-    for et in eval_types:
-        for met in metrics:
-            for a, b in comparisons:
-                mean_d, med_d, n2 = pairwise_diff_stats(df_long, et, met, a, b)
-                stat, p, n = pairwise_wilcoxon(df_long, et, met, a, b)
+    if holm_within_eval:
+        # Apply Holm separately within each eval_type (recommended for sensitivity analysis blocks)
+        for et in eval_types:
+            block_rows_idx: List[int] = []
+            block_pvals: List[float] = []
 
-                # Prefer n from diff_stats (includes zeros) for display; should match Wilcoxon pairing n.
-                n_disp = n2 if n2 > 0 else n
+            for met in metrics:
+                for a, b in comparisons:
+                    mean_d, med_d, n2 = pairwise_diff_stats(df_long, et, met, a, b)
+                    stat, p, n = pairwise_wilcoxon(df_long, et, met, a, b)
+                    n_disp = n2 if n2 > 0 else n
 
-                rows.append(
-                    {
-                        "Evaluation": et,
-                        "Metric": met,
-                        "Comparison": f"{a} vs {b}",
-                        "n (paired)": n_disp,
-                        "Mean diff": fmt_diff(mean_d, digits=2),
-                        "Median diff": fmt_diff(med_d, digits=2),
-                        "Wilcoxon W": "" if not np.isfinite(stat) else f"{stat:.1f}",
-                        "p": "" if not np.isfinite(p) else p,
-                    }
-                )
-                if np.isfinite(p):
-                    pvals.append(float(p))
-                    meta.append(len(rows) - 1)
+                    rows.append(
+                        {
+                            "Evaluation": et,
+                            "Metric": met,
+                            "Comparison": f"{a} vs {b}",
+                            "n (paired)": n_disp,
+                            "Mean diff": fmt_diff(mean_d, digits=2),
+                            "Median diff": fmt_diff(med_d, digits=2),
+                            "Wilcoxon W": "" if not np.isfinite(stat) else f"{stat:.1f}",
+                            "p": "" if not np.isfinite(p) else p,
+                        }
+                    )
+                    if np.isfinite(p):
+                        block_pvals.append(float(p))
+                        block_rows_idx.append(len(rows) - 1)
 
-    # Holm adjustment only for rows with finite p
-    p_adj = holm_adjust(pvals) if pvals else []
-    for adj, idx in zip(p_adj, meta):
-        rows[idx]["p (Holm)"] = fmt_p(adj)
+            # Holm adjustment within this block
+            if block_pvals:
+                p_adj = holm_adjust(block_pvals)
+                for adj, idx in zip(p_adj, block_rows_idx):
+                    rows[idx]["p (Holm)"] = fmt_p(adj)
 
-    # Fill missing adjusted p cells
+    else:
+        # Original behavior: Holm across all rows across eval_types
+        pvals: List[float] = []
+        idx_map: List[int] = []
+
+        for et in eval_types:
+            for met in metrics:
+                for a, b in comparisons:
+                    mean_d, med_d, n2 = pairwise_diff_stats(df_long, et, met, a, b)
+                    stat, p, n = pairwise_wilcoxon(df_long, et, met, a, b)
+                    n_disp = n2 if n2 > 0 else n
+
+                    rows.append(
+                        {
+                            "Evaluation": et,
+                            "Metric": met,
+                            "Comparison": f"{a} vs {b}",
+                            "n (paired)": n_disp,
+                            "Mean diff": fmt_diff(mean_d, digits=2),
+                            "Median diff": fmt_diff(med_d, digits=2),
+                            "Wilcoxon W": "" if not np.isfinite(stat) else f"{stat:.1f}",
+                            "p": "" if not np.isfinite(p) else p,
+                        }
+                    )
+                    if np.isfinite(p):
+                        pvals.append(float(p))
+                        idx_map.append(len(rows) - 1)
+
+        if pvals:
+            p_adj = holm_adjust(pvals)
+            for adj, idx in zip(p_adj, idx_map):
+                rows[idx]["p (Holm)"] = fmt_p(adj)
+
+    # Fill missing adjusted p cells + format raw p
     for r in rows:
         if "p (Holm)" not in r:
             r["p (Holm)"] = ""
-
-        # format raw p
         if isinstance(r["p"], float):
             r["p"] = fmt_p(r["p"])
 
@@ -423,8 +453,19 @@ def build_pairwise_table(
 
 
 def df_to_markdown(df: pd.DataFrame) -> str:
-    # Requires tabulate installed; pandas will use it.
     return df.to_markdown(index=False)
+
+
+def split_eval_blocks_markdown(df: pd.DataFrame, title: str) -> str:
+    """
+    Split one pairwise df (with Evaluation column) into multiple markdown tables per Evaluation.
+    Keeps the same columns; each block has a heading.
+    """
+    parts: List[str] = [title, "\n\n"]
+    for et, sub in df.groupby("Evaluation", sort=False):
+        parts.append(f"## {et}\n\n")
+        parts.append(df_to_markdown(sub) + "\n\n")
+    return "".join(parts)
 
 
 # ----------------------------
@@ -434,11 +475,23 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Generate Table 4 (main + supplementary) as Markdown.")
     ap.add_argument("--manual", required=True, help="Manual evaluation JSON path (list of dicts with 'ID').")
     ap.add_argument("--llm", required=True, help="LLM evaluation JSON path (list of dicts; ID = index+1).")
+
+    # Sensitivity analysis (optional)
+    ap.add_argument("--manual_primary", default=None, help="Primary rater manual JSON path (optional).")
+    ap.add_argument("--manual_secondary", default=None, help="Secondary rater manual JSON path (optional).")
+
     ap.add_argument("--out_main", default="table4.md", help="Output path for main table markdown.")
     ap.add_argument("--out_supp", default="table4_supplementary.md", help="Output path for supplementary markdown.")
     ap.add_argument("--n_boot", type=int, default=5000, help="Bootstrap iterations for mean CI.")
     ap.add_argument("--seed", type=int, default=1, help="Random seed for bootstrap.")
     ap.add_argument("--alpha", type=float, default=0.05, help="Alpha for (1-alpha) CI. default=0.05 => 95% CI")
+
+    # Optional: include LLM in supplementary even in sensitivity mode
+    ap.add_argument(
+        "--supp_include_llm",
+        action="store_true",
+        help="Include LLM in supplementary table even when primary/secondary are provided (default: False).",
+    )
     args = ap.parse_args()
 
     manual = load_json(args.manual)
@@ -447,19 +500,47 @@ def main() -> None:
     if not isinstance(manual, list) or not isinstance(llm, list):
         raise ValueError("Both input JSON files must be arrays (lists) of records.")
 
-    df_manual = parse_records_to_long_df(manual, "Manual")
-    df_llm = parse_records_to_long_df(llm, "LLM")
-    df_long = pd.concat([df_manual, df_llm], ignore_index=True)
+    # Labels
+    manual_mean_label = "Manual (mean)"
 
-    # Main Table
-    df_main = build_main_table(df_long, n_boot=args.n_boot, seed=args.seed, alpha=args.alpha)
+    df_manual_mean = parse_records_to_long_df(manual, manual_mean_label)
+    df_llm = parse_records_to_long_df(llm, "LLM")
+
+    df_parts = [df_manual_mean, df_llm]
+
+    # Optional primary/secondary
+    have_raters = bool(args.manual_primary) and bool(args.manual_secondary)
+    if have_raters:
+        manual_p = load_json(args.manual_primary)
+        manual_s = load_json(args.manual_secondary)
+        if not isinstance(manual_p, list) or not isinstance(manual_s, list):
+            raise ValueError("--manual_primary/--manual_secondary must be JSON arrays (lists).")
+        df_parts.append(parse_records_to_long_df(manual_p, "Manual (primary)"))
+        df_parts.append(parse_records_to_long_df(manual_s, "Manual (secondary)"))
+
+    df_long = pd.concat(df_parts, ignore_index=True)
+
+    # Main Table (Friedman)
+    df_main = build_main_table(df_long, n_boot=args.n_boot, seed=args.seed, alpha=args.alpha, manual_label=manual_mean_label)
     md_main = "# Table 4\n\n" + df_to_markdown(df_main) + "\n"
     save_text(args.out_main, md_main)
 
-    # Supplementary (pairwise)
-    df_pair = build_pairwise_table(df_long)
-    md_supp = "# Table 4 (Supplementary)\n\n" + df_to_markdown(df_pair) + "\n"
-    save_text(args.out_supp, md_supp)
+    # Supplementary (Wilcoxon)
+    if have_raters:
+        eval_types = [manual_mean_label, "Manual (primary)", "Manual (secondary)"]
+        if args.supp_include_llm:
+            eval_types = eval_types + ["LLM"]
+
+        df_pair = build_pairwise_table_for_evaltypes(df_long, eval_types=eval_types, holm_within_eval=True)
+        header = "# Table 4 (Supplementary)\n\n"
+        header += "_Pairwise Wilcoxon tests with Holm adjustment applied within each evaluation block._\n\n"
+        md_supp = split_eval_blocks_markdown(df_pair, header)
+        save_text(args.out_supp, md_supp)
+    else:
+        # Original behavior
+        df_pair = build_pairwise_table_for_evaltypes(df_long, eval_types=[manual_mean_label, "LLM"], holm_within_eval=False)
+        md_supp = "# Table 4 (Supplementary)\n\n" + df_to_markdown(df_pair) + "\n"
+        save_text(args.out_supp, md_supp)
 
 
 if __name__ == "__main__":

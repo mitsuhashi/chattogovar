@@ -243,17 +243,26 @@ workflow:
       type: custom
       width: 241
     - data:
-        code: "import re\nimport json\n\n# Extract rsID and HGVS-like strings from\
-          \ the user's question.\n# - rsID: rs\\d+\n# - HGVS: <accession_or_transcript>:<g|c|n|p>.<...>\n\
-          HGVS_RE = re.compile(\n    r\"\\b(\"\n    r\"(?:NC_\\d+\\.\\d+|NM_\\d+\\\
-          .\\d+|NR_\\d+\\.\\d+|ENST\\d+\\.\\d+|LRG_\\d+(?:t\\d+|p\\d+)?|[A-Za-z0-9_.-]+)\"\
-          \n    r\":\"\n    r\"(?:g|c|n|p)\\.[^\\s,;]+\"\n    r\")\\b\"\n)\n\ndef\
-          \ main(query: str) -> dict:\n    rs = sorted(set(m.lower() for m in re.findall(r\"\
-          \\brs\\d+\\b\", query, flags=re.IGNORECASE)))\n    hgvs = sorted(set(m.group(1)\
-          \ for m in HGVS_RE.finditer(query)))\n\n    return {\n        \"rs_numbers\"\
-          : json.dumps(rs, ensure_ascii=False),\n        \"hgvs_list\": json.dumps(hgvs,\
-          \ ensure_ascii=False),\n        \"has_rs\": bool(rs),\n        \"has_hgvs\"\
-          : bool(hgvs),\n        \"no_match\": not (rs or hgvs)\n    }\n"
+        code: "import re\nimport json\nimport unicodedata\n\n# Extract rsID and HGVS-like\
+          \ strings from the user's question.\n# Fix:\n# - Avoid \\b and avoid lookbehind\
+          \ to be robust across runtimes.\n# - Use explicit boundary as a non-capturing\
+          \ prefix (^|[^0-9A-Za-z_]) and capture the token itself.\n# - NFKC normalization\
+          \ converts full-width rs/digits and punctuation to ASCII equivalents.\n\n\
+          RS_RE = re.compile(r\"(?i)(?:^|[^0-9A-Za-z_])(rs\\d+)(?![0-9A-Za-z_])\"\
+          )\n\nHGVS_RE = re.compile(\n    r\"(?i)(?:^|[^0-9A-Za-z_])(\"          \
+          \       # explicit left boundary, capture HGVS\n    r\"(?:NC_\\d+\\.\\d+|NM_\\\
+          d+\\.\\d+|NR_\\d+\\.\\d+|ENST\\d+\\.\\d+|LRG_\\d+(?:t\\d+|p\\d+)?|[A-Za-z0-9_.-]+)\"\
+          \n    r\":\"\n    r\"(?:g|c|n|p)\\.\"\n    r\"[0-9A-Za-z_>\\+\\-\\*\\=\\\
+          (\\)\\[\\]\\?\\/]+\"\n    r\")\"\n    r\"(?![0-9A-Za-z_])\"            \
+          \              # explicit right boundary\n)\n\ndef _normalize_query(q: str)\
+          \ -> str:\n    if q is None:\n        return \"\"\n    return unicodedata.normalize(\"\
+          NFKC\", q)\n\ndef main(query: str) -> dict:\n    q = _normalize_query(query)\n\
+          \n    rs = sorted(set(m.group(1).lower() for m in RS_RE.finditer(q)))\n\
+          \    hgvs = sorted(set(m.group(1) for m in HGVS_RE.finditer(q)))\n\n   \
+          \ return {\n        \"rs_numbers\": json.dumps(rs, ensure_ascii=False),\n\
+          \        \"hgvs_list\": json.dumps(hgvs, ensure_ascii=False),\n        \"\
+          has_rs\": bool(rs),\n        \"has_hgvs\": bool(hgvs),\n        \"no_match\"\
+          : not (rs or hgvs),\n    }"
         code_language: python3
         desc: ''
         outputs:
@@ -284,10 +293,10 @@ workflow:
       id: '1742454133751'
       position:
         x: 71.20295385233044
-        y: 281.41935443881266
+        y: 279.7405808277373
       positionAbsolute:
         x: 71.20295385233044
-        y: 281.41935443881266
+        y: 279.7405808277373
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -351,11 +360,11 @@ workflow:
       height: 133
       id: '1742454938143'
       position:
-        x: 2135.4561378046033
-        y: 326.4823815391502
+        x: 2486.5060100452565
+        y: -33.15304541658263
       positionAbsolute:
-        x: 2135.4561378046033
-        y: 326.4823815391502
+        x: 2486.5060100452565
+        y: -33.15304541658263
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -453,7 +462,7 @@ workflow:
       positionAbsolute:
         x: 1617.6780452574294
         y: 757.6419114693754
-      selected: true
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -518,7 +527,7 @@ workflow:
       positionAbsolute:
         x: 2091.472339412472
         y: -92.77199570365121
-      selected: false
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -607,22 +616,22 @@ workflow:
           \ str):\n    if not ensembl_body:\n        return []\n    try:\n       \
           \ decoded = json.loads(ensembl_body)\n    except Exception:\n        return\
           \ []\n\n    locs = []\n    # Example response: list of dicts, allele-key\
-          \ -> object, containing \"spdi\" list fileciteturn0file0L1-L1\n    #\
-          \ We'll just collect positions from SPDI where possible.\n    if isinstance(decoded,\
-          \ list):\n        items = decoded\n    else:\n        items = [decoded]\n\
-          \n    for item in items:\n        if not isinstance(item, dict):\n     \
-          \       continue\n        for _, allele_obj in item.items():\n         \
-          \   if not isinstance(allele_obj, dict):\n                continue\n   \
-          \         spdis = allele_obj.get(\"spdi\") or []\n            if not spdis:\n\
-          \                continue\n            spdi = spdis[0]  # \"NC_000009.12:133256041:C:T\"\
-          \n            parts = spdi.split(\":\")\n            if len(parts) < 2:\n\
-          \                continue\n            acc = parts[0]\n            try:\n\
-          \                pos0 = int(parts[1])\n            except Exception:\n \
-          \               continue\n            chrom = _nc_to_chr(acc)\n        \
-          \    if chrom is None:\n                continue\n            pos1 = pos0\
-          \ + 1  # SPDI uses 0-based position\n            locs.append({\"chromosome\"\
-          : chrom, \"position\": pos1})\n\n    # de-dup\n    uniq = {(d[\"chromosome\"\
-          ], d[\"position\"]) for d in locs}\n    return [{\"chromosome\": c, \"position\"\
+          \ -> object, containing \"spdi\" list \n    # We'll just collect positions\
+          \ from SPDI where possible.\n    if isinstance(decoded, list):\n       \
+          \ items = decoded\n    else:\n        items = [decoded]\n\n    for item\
+          \ in items:\n        if not isinstance(item, dict):\n            continue\n\
+          \        for _, allele_obj in item.items():\n            if not isinstance(allele_obj,\
+          \ dict):\n                continue\n            spdis = allele_obj.get(\"\
+          spdi\") or []\n            if not spdis:\n                continue\n   \
+          \         spdi = spdis[0]  # \"NC_000009.12:133256041:C:T\"\n          \
+          \  parts = spdi.split(\":\")\n            if len(parts) < 2:\n         \
+          \       continue\n            acc = parts[0]\n            try:\n       \
+          \         pos0 = int(parts[1])\n            except Exception:\n        \
+          \        continue\n            chrom = _nc_to_chr(acc)\n            if chrom\
+          \ is None:\n                continue\n            pos1 = pos0 + 1  # SPDI\
+          \ uses 0-based position\n            locs.append({\"chromosome\": chrom,\
+          \ \"position\": pos1})\n\n    # de-dup\n    uniq = {(d[\"chromosome\"],\
+          \ d[\"position\"]) for d in locs}\n    return [{\"chromosome\": c, \"position\"\
           : p} for (c, p) in sorted(uniq)]\n\ndef main(rs_numbers: str, hgvs_list:\
           \ str, ensembl_body: str) -> dict:\n    try:\n        rs = json.loads(rs_numbers)\
           \ if rs_numbers else []\n    except Exception:\n        rs = []\n    try:\n\
@@ -676,7 +685,7 @@ workflow:
       type: custom
       width: 241
     viewport:
-      x: -1160.3861976701667
-      y: 20.326455881386096
-      zoom: 0.6855919998924549
+      x: -873.0236926561547
+      y: 138.21969360569534
+      zoom: 0.5424613711186811
   rag_pipeline_variables: []
